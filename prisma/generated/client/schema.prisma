@@ -1,0 +1,326 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "./generated/client"
+}
+
+datasource db {
+  provider     = "postgresql"
+  url          = env("POSTGRES_PRISMA_URL") // uses connection pooling
+  directUrl    = env("POSTGRES_URL_NON_POOLING") // uses a direct connection
+  relationMode = "prisma"
+}
+
+model Account {
+  id                 String            @id @default(dbgenerated("gen_random_uuid()"))
+  user_id            String            @unique
+  user_name          String            @unique
+  password           String
+  roles              Role[]
+  orders             Order[]
+  reviews            Review[]
+  payment_details    PaymentDetail[]
+  shipping_addresses ShippingAddress[]
+  favorites          Product[]
+  salt               String?
+  refresh_token      String?
+  published          Boolean?          @default(false)
+
+  created_at DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at DateTime? @default(now()) @db.Timestamptz(6)
+
+  user User? @relation(fields: [user_id], references: [id])
+
+  @@map(name: "accounts")
+}
+
+model User {
+  id        String   @id @default(dbgenerated("gen_random_uuid()"))
+  name      String
+  email     String
+  phone     String
+  dob       String
+  address   Json?
+  published Boolean? @default(false)
+
+  created_at DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at DateTime? @default(now()) @db.Timestamptz(6)
+
+  account Account?
+
+  @@map(name: "users")
+}
+
+model Role {
+  id        String    @id @default(dbgenerated("gen_random_uuid()"))
+  name      String
+  slug      String
+  accounts  Account[]
+  published Boolean?  @default(false)
+
+  created_at DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at DateTime? @default(now()) @db.Timestamptz(6)
+
+  @@map(name: "roles")
+}
+
+model ProductStatus {
+  id        String    @id @default(dbgenerated("gen_random_uuid()"))
+  name      String
+  products  Product[]
+  published Boolean?  @default(false)
+
+  created_at DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at DateTime? @default(now()) @db.Timestamptz(6)
+
+  @@map(name: "product_status")
+}
+
+model Category {
+  id        String    @id @default(dbgenerated("gen_random_uuid()"))
+  name      String
+  slug      String
+  parent_id String?
+  products  Product[]
+  sliders   Slider[]
+  banners   Banner[]
+  details   Detail[]
+  published Boolean?  @default(false)
+
+  created_at DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at DateTime? @default(now()) @db.Timestamptz(6)
+
+  children Category[] @relation("children")
+  parent   Category?  @relation("children", fields: [parent_id], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@map(name: "categories")
+}
+
+model Slider {
+  id          String   @id @default(dbgenerated("gen_random_uuid()"))
+  title       String
+  uri         String?
+  image       Json?
+  category_id String?
+  published   Boolean? @default(false)
+
+  created_at DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at DateTime? @default(now()) @db.Timestamptz(6)
+
+  category Category? @relation(fields: [category_id], references: [id])
+
+  @@map(name: "sliders")
+}
+
+model Detail {
+  id            String   @id @default(dbgenerated("gen_random_uuid()"))
+  info          Json?
+  specification Json?
+  options_type  Type?    @default(NONE)
+  category_id   String?
+  published     Boolean? @default(false)
+
+  created_at DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at DateTime? @default(now()) @db.Timestamptz(6)
+
+  category Category? @relation(fields: [category_id], references: [id])
+
+  @@map(name: "details")
+}
+
+enum Type {
+  COLORS
+  SIZES
+  NONE
+}
+
+model Banner {
+  id          String   @id @default(dbgenerated("gen_random_uuid()"))
+  title       String
+  uri         String?
+  image       Json?
+  type        String?
+  category_id String?
+  published   Boolean? @default(false)
+
+  created_at DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at DateTime? @default(now()) @db.Timestamptz(6)
+
+  category Category? @relation(fields: [category_id], references: [id])
+
+  @@map(name: "banners")
+}
+
+model Product {
+  id               String    @id @default(dbgenerated("gen_random_uuid()"))
+  name             String
+  slug             String
+  unit_weight      String
+  unit_price       String
+  currency         String
+  description_tiny String?
+  description_full String?
+  category_id      String?
+  status_id        String?
+  price_sale_off   String?
+  sale_off_from    DateTime?
+  sale_off_to      DateTime?
+  quantity         Int?
+  featured         Boolean?  @default(false)
+  is_new           Boolean?  @default(true)
+  published        Boolean?  @default(false)
+
+  created_at DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at DateTime? @default(now()) @db.Timestamptz(6)
+
+  category Category?      @relation(fields: [category_id], references: [id])
+  status   ProductStatus? @relation(fields: [status_id], references: [id])
+
+  accounts      Account[]
+  reviews       Review[]
+  order_details OrderDetail[]
+
+  @@map(name: "products")
+}
+
+model OrderDetail {
+  order_id   String
+  product_id String
+  quantity   Int
+  published  Boolean? @default(false)
+
+  created_at DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at DateTime? @default(now()) @db.Timestamptz(6)
+
+  order   Order?   @relation(fields: [order_id], references: [id])
+  product Product? @relation(fields: [product_id], references: [id])
+
+  @@id([order_id, product_id])
+  @@map(name: "order_details")
+}
+
+model Order {
+  id            String        @id @default(dbgenerated("gen_random_uuid()"))
+  account_id    String
+  shipping_id   String?
+  payment_id    String?
+  order_details OrderDetail[]
+  published     Boolean?      @default(false)
+
+  created_at DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at DateTime? @default(now()) @db.Timestamptz(6)
+
+  account  Account?  @relation(fields: [account_id], references: [id])
+  shipping Shipping? @relation(fields: [shipping_id], references: [id])
+  payment  Payment?  @relation(fields: [payment_id], references: [id])
+
+  @@map(name: "orders")
+}
+
+model Rating {
+  id        String   @id @default(dbgenerated("gen_random_uuid()"))
+  name      String
+  point     Decimal
+  published Boolean? @default(false)
+
+  created_at DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at DateTime? @default(now()) @db.Timestamptz(6)
+
+  reviews Review[]
+
+  @@map(name: "ratings")
+}
+
+model Payment {
+  id              String          @id @default(dbgenerated("gen_random_uuid()"))
+  name            String
+  orders          Order[]
+  payment_details PaymentDetail[]
+  published       Boolean?        @default(false)
+
+  created_at DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at DateTime? @default(now()) @db.Timestamptz(6)
+
+  @@map(name: "payments")
+}
+
+model PaymentDetail {
+  payment_id  String
+  account_id  String
+  card_holder String?
+  card_number String?
+  card_expire String?
+  address     String?
+  email       String?
+  phone       String?
+  published   Boolean? @default(false)
+
+  created_at DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at DateTime? @default(now()) @db.Timestamptz(6)
+
+  payment Payment? @relation(fields: [payment_id], references: [id])
+  account Account? @relation(fields: [account_id], references: [id])
+
+  @@id([payment_id, account_id])
+  @@map(name: "payment_details")
+}
+
+model Shipping {
+  id          String   @id @default(dbgenerated("gen_random_uuid()"))
+  name        String
+  orders      Order[]
+  description String
+  price       String
+  currency    String
+  published   Boolean? @default(false)
+
+  created_at DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at DateTime? @default(now()) @db.Timestamptz(6)
+
+  @@map(name: "shippings")
+}
+
+model ShippingAddress {
+  id         String   @id @default(dbgenerated("gen_random_uuid()"))
+  account_id String   @unique
+  name       String
+  email      String
+  phone      String
+  address    Json
+  zip_code   String
+  province   String
+  city       String
+  area       String
+  country    String
+  published  Boolean? @default(false)
+
+  created_at DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at DateTime? @default(now()) @db.Timestamptz(6)
+
+  account Account? @relation(fields: [account_id], references: [id])
+
+  @@map(name: "shipping_addresses")
+}
+
+model Review {
+  account_id String
+  product_id String
+  vote_id    String
+  comment    String
+  published  Boolean? @default(false)
+
+  created_at DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at DateTime? @default(now()) @db.Timestamptz(6)
+
+  account Account? @relation(fields: [account_id], references: [id])
+  product Product? @relation(fields: [product_id], references: [id])
+  rating  Rating?  @relation(fields: [vote_id], references: [id])
+
+  @@id([account_id, product_id, vote_id])
+  @@map(name: "reviews")
+}
