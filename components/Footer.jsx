@@ -99,7 +99,7 @@ export default function Footer() {
         <p className="text-white">
           <span className="text-white">Development by</span>{' '}
           <a href="https://nmp-portfolio.vercel.app" target="_blank" className="text-shalom-green-500">
-            NMP
+            NMP and PXC
           </a>
         </p>
       </div>
